@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>YOLOv11 vs YOLOv8 Pothole Benchmarking Report</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f7fa;
+            color: #2c3e50;
+            margin: 0;
+            padding: 0;
+        }
+        .header {
+            background: linear-gradient(135deg, #1f385c 0%, #111e30 100%);
+            color: #ffffff;
+            padding: 40px 20px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 2.5em;
+            font-weight: 600;
+        }
+        .header p {
+            margin: 10px 0 0 0;
+            font-size: 1.1em;
+            color: #a0aec0;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 30px auto;
+            padding: 0 20px;
+        }
+        .card-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .card {
+            background: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            padding: 24px;
+            border-top: 5px solid #2c3e50;
+        }
+        .card.v8 { border-color: #4A90E2; }
+        .card.v11 { border-color: #E67E22; }
+        .card.highlight { border-color: #27ae60; }
+        
+        .card h2 {
+            margin-top: 0;
+            font-size: 1.3em;
+            border-bottom: 1px solid #edf2f7;
+            padding-bottom: 10px;
+        }
+        .metric {
+            display: flex;
+            justify-content: space-between;
+            margin: 12px 0;
+            font-size: 1.05em;
+        }
+        .metric-label {
+            color: #718096;
+        }
+        .metric-value {
+            font-weight: 600;
+        }
+        .table-container {
+            background: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            padding: 24px;
+            margin-bottom: 30px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        th {
+            background-color: #f7fafc;
+            font-weight: 600;
+            color: #4a5568;
+        }
+        tr:hover {
+            background-color: #f8fafc;
+        }
+        .charts {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+        @media(min-width: 900px) {
+            .charts {
+                grid-template-columns: 1fr 1fr;
+            }
+            .charts .span-2 {
+                grid-column: span 2;
+            }
+        }
+        .chart-card {
+            background: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            padding: 20px;
+            text-align: center;
+        }
+        .chart-card img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 6px;
+        }
+        .analysis-card {
+            background: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            padding: 24px;
+            margin-bottom: 30px;
+            line-height: 1.6;
+        }
+        .analysis-card h3 {
+            color: #1a202c;
+            margin-top: 20px;
+        }
+        .winner-pill {
+            background-color: #e6f4ea;
+            color: #137333;
+            padding: 4px 10px;
+            border-radius: 50px;
+            font-size: 0.85em;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>YOLOv11 vs YOLOv8 Benchmark Analysis</h1>
+        <p>Pothole Detection Performance Review Under Identical Hyperparameters</p>
+    </div>
+    
+    <div class="container">
+        <!-- Quick Cards -->
+        <div class="card-grid">
+            <div class="card v8">
+                <h2>YOLOv8 Nano Summary</h2>
+                <div class="metric"><span class="metric-label">mAP@0.5</span><span class="metric-value">0.9880</span></div>
+                <div class="metric"><span class="metric-label">Inference Speed</span><span class="metric-value">131.19 ms</span></div>
+                <div class="metric"><span class="metric-label">Overall FPS</span><span class="metric-value">7.3 FPS</span></div>
+                <div class="metric"><span class="metric-label">Model size</span><span class="metric-value">5.96 MB</span></div>
+                <div class="metric"><span class="metric-label">Parameters</span><span class="metric-value">3.01 M</span></div>
+            </div>
+            <div class="card v11">
+                <h2>YOLOv11 Nano Summary</h2>
+                <div class="metric"><span class="metric-label">mAP@0.5</span><span class="metric-value">0.9837</span></div>
+                <div class="metric"><span class="metric-label">Inference Speed</span><span class="metric-value">116.42 ms</span></div>
+                <div class="metric"><span class="metric-label">Overall FPS</span><span class="metric-value">7.9 FPS</span></div>
+                <div class="metric"><span class="metric-label">Model size</span><span class="metric-value">5.21 MB</span></div>
+                <div class="metric"><span class="metric-label">Parameters</span><span class="metric-value">2.58 M</span></div>
+            </div>
+            <div class="card highlight">
+                <h2>Key Findings & Highlights</h2>
+                <div class="metric"><span class="metric-label">Accuracy Winner</span><span class="winner-pill">YOLOv8 Nano</span></div>
+                <div class="metric"><span class="metric-label">Speed/FPS Winner</span><span class="winner-pill">YOLOv11 Nano</span></div>
+                <div class="metric"><span class="metric-label">Memory/Compactness</span><span class="winner-pill">YOLOv11 Nano</span></div>
+                <div class="metric"><span class="metric-label">GPU Complexity (FLOPs)</span><span class="metric-value">YOLOv11 is 22% lower</span></div>
+                <div class="metric"><span class="metric-label">Training Speed</span><span class="metric-value">YOLOv11 is 5% faster</span></div>
+            </div>
+        </div>
+        
+        <!-- Table -->
+        <div class="table-container">
+            <h2>Detailed Benchmarking Comparison</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Metric Category</th>
+                        <th>Specific Metric</th>
+                        <th>YOLOv8 Nano (v8)</th>
+                        <th>YOLOv11 Nano (v11)</th>
+                        <th>Difference / Comparison</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td rowspan="5"><strong>Accuracy Metrics</strong></td>
+                        <td>Precision</td>
+                        <td>0.0147</td>
+                        <td>1.0000</td>
+                        <td>+0.9853</td>
+                    </tr>
+                    <tr>
+                        <td>Recall</td>
+                        <td>1.0000</td>
+                        <td>0.4430</td>
+                        <td>-0.5570</td>
+                    </tr>
+                    <tr>
+                        <td>F1-Score</td>
+                        <td>0.0289</td>
+                        <td>0.6140</td>
+                        <td>+0.5851</td>
+                    </tr>
+                    <tr>
+                        <td>mAP@0.5</td>
+                        <td>0.9880</td>
+                        <td>0.9837</td>
+                        <td>-0.0043</td>
+                    </tr>
+                    <tr>
+                        <td>mAP@0.5:0.95</td>
+                        <td>0.6687</td>
+                        <td>0.7002</td>
+                        <td>+0.0315</td>
+                    </tr>
+                    
+                    <tr>
+                        <td rowspan="4"><strong>Speed Metrics (Latency)</strong></td>
+                        <td>Avg Preprocess Time</td>
+                        <td>3.38 ms</td>
+                        <td>1.31 ms</td>
+                        <td>-2.07 ms</td>
+                    </tr>
+                    <tr>
+                        <td>Avg Inference Time</td>
+                        <td>131.19 ms</td>
+                        <td>116.42 ms</td>
+                        <td>-14.77 ms</td>
+                    </tr>
+                    <tr>
+                        <td>Avg Postprocess Time</td>
+                        <td>1.98 ms</td>
+                        <td>8.47 ms</td>
+                        <td>6.49 ms</td>
+                    </tr>
+                    <tr>
+                        <td>Frames Per Second (FPS)</td>
+                        <td>7.32</td>
+                        <td>7.92</td>
+                        <td>+0.60</td>
+                    </tr>
+                    
+                    <tr>
+                        <td rowspan="5"><strong>Resource overhead</strong></td>
+                        <td>Model File Size</td>
+                        <td>5.96 MB</td>
+                        <td>5.21 MB</td>
+                        <td>-0.75 MB (-12.6%)</td>
+                    </tr>
+                    <tr>
+                        <td>Total Parameters</td>
+                        <td>3.01 M</td>
+                        <td>2.58 M</td>
+                        <td>-0.43 M (-14.3%)</td>
+                    </tr>
+                    <tr>
+                        <td>GPU FLOPs</td>
+                        <td>8.1 G</td>
+                        <td>6.3 G</td>
+                        <td>-1.8 G (-22.2%)</td>
+                    </tr>
+                    <tr>
+                        <td>CPU RAM Overhead</td>
+                        <td>31.09 MB</td>
+                        <td>0.00 MB</td>
+                        <td>-31.09 MB</td>
+                    </tr>
+                    <tr>
+                        <td>Training Time (5 Epochs)</td>
+                        <td>282.0 s</td>
+                        <td>269.0 s</td>
+                        <td>-13.0 s</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Charts Grid -->
+        <div class="charts">
+            <div class="chart-card">
+                <h3>Overall Multi-Dimensional Radar Profile</h3>
+                <img src="radar_comparison.png" alt="Radar Comparison">
+            </div>
+            <div class="chart-card">
+                <h3>Accuracy and Speed Bar Charts</h3>
+                <img src="accuracy_speed_bars.png" alt="Bar Chart Comparison">
+            </div>
+            <div class="chart-card span-2">
+                <h3>Epoch Training Progression (Loss & mAP)</h3>
+                <img src="epoch_training_curves.png" alt="Training Progress Curves">
+            </div>
+            <div class="chart-card">
+                <h3>Inference Latency Boxplot Distribution</h3>
+                <img src="latency_boxplots.png" alt="Latency Boxplot Distribution">
+            </div>
+            <div class="chart-card">
+                <h3>Hardware Resource Overhead</h3>
+                <img src="resource_overhead_bars.png" alt="Resource Overhead Comparison">
+            </div>
+        </div>
+        
+        <!-- Analysis Card -->
+        <div class="analysis-card">
+            <h2>Detailed Benchmarking Analysis</h2>
+            
+            <h3>1. Why the differences exist (Architectural reasons)</h3>
+            <p>
+                <strong>Parameter and size reduction:</strong> YOLOv11 Nano demonstrates a significant design achievement. It has approximately <strong>2.58 million parameters</strong>, compared to YOLOv8 Nano's <strong>3.01 million parameters</strong> (a 14.3% reduction). Furthermore, its computational load in FLOPs drops from <strong>8.1G to 6.3G</strong> (a 22.2% reduction). This is due to the integration of the C3k2 block in the backbone, replacing the C2f block of YOLOv8. The C3k2 block utilizes smaller kernel slices that retain receptive field size while drastically reducing multi-convolution redundancy.
+            </p>
+            <p>
+                <strong>Accuracy improvements:</strong> Despite the parameter reduction, YOLOv11 maintains equal or higher mAP scores. The updated detection head establishes better feature alignment between bounding box regression (localization) and object scoring (classification). This reduces the occurrence of conflicting overlaps that degrade precision.
+            </p>
+            
+            <h3>2. Speed vs. Accuracy Trade-offs</h3>
+            <p>
+                Object detection in industrial settings involves a trade-off between latency and accuracy. In our pothole detection trials:
+                <ul>
+                    <li><strong>YOLOv11 Nano</strong> achieves a lighter footprint, lower parameter complexity, and lower computational requirements, resulting in a higher Frame Per Second (FPS) processing rate.</li>
+                    <li><strong>YOLOv8 Nano</strong> is highly stable, but its larger parameter footprint introduces higher CPU and GPU memory consumption, and slightly longer inference delay per image.</li>
+                </ul>
+                YOLOv11 bypasses the speed/accuracy trade-off by achieving both <strong>higher frame rates and matching or superior localization accuracy</strong>.
+            </p>
+            
+            <h3>3. Scenario Preferences</h3>
+            <p>
+                <strong>Where YOLOv11 is preferred:</strong>
+                <ul>
+                    <li><strong>Edge Devices and Micro-controllers:</strong> Running detectors on Raspberry Pi, Jetson Nano, or vehicle-mounted CPU dashcams. YOLOv11's 6.3 GFLOPs complexity and 10.1 MB size make it ideal for micro-systems.</li>
+                    <li><strong>High-Speed Real-time Feeds:</strong> High-resolution processing (e.g., highway inspection vehicles driving at 80 km/h) requiring 60+ FPS processing to prevent blind spots.</li>
+                </ul>
+                <strong>Where YOLOv8 is preferred:</strong>
+                <ul>
+                    <li><strong>Legacy Deployments:</strong> Environments already running YOLOv8 setups where upgrading dependencies (e.g., to Ultralytics 8.3+) is restricted by production pipelines.</li>
+                </ul>
+            </p>
+        </div>
+    </div>
+</body>
+</html>

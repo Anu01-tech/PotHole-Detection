@@ -1,0 +1,36 @@
+{
+    "YOLOv8": {
+        "precision": 0.0147,
+        "recall": 1.0,
+        "f1_score": 0.0289,
+        "mAP50": 0.988,
+        "mAP50_95": 0.6687,
+        "preprocess_time_ms": 3.38,
+        "inference_time_ms": 131.19,
+        "postprocess_time_ms": 1.98,
+        "fps": 7.32,
+        "file_size_mb": 5.96,
+        "parameters_million": 3.01,
+        "flops_g": 8.1,
+        "cpu_memory_mb": 31.09,
+        "gpu_memory_mb": 0.0,
+        "training_time_sec": 282.0
+    },
+    "YOLOv11": {
+        "precision": 1.0,
+        "recall": 0.443,
+        "f1_score": 0.614,
+        "mAP50": 0.9837,
+        "mAP50_95": 0.7002,
+        "preprocess_time_ms": 1.31,
+        "inference_time_ms": 116.42,
+        "postprocess_time_ms": 8.47,
+        "fps": 7.92,
+        "file_size_mb": 5.21,
+        "parameters_million": 2.58,
+        "flops_g": 6.3,
+        "cpu_memory_mb": 0.0,
+        "gpu_memory_mb": 0.0,
+        "training_time_sec": 269.0
+    }
+}

@@ -1,0 +1,40 @@
+# Python Bytecode & Cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.ipynb_checkpoints/
+
+# Virtual Environments
+.venv/
+venv/
+env/
+ENV/
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints
+
+# IDE configurations
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+
+# OS generated files
+.DS_Store
+.DS_Store?
+ehthumbs.db
+Thumbs.db
+
+# Credentials & local configurations
+kaggle.json
+.streamlit/config.toml
+
+# Large datasets and model weights (optional to ignore, but we keep our small checkpoints in git)
+# If you download large external datasets, uncomment the line below:
+# dataset/images/
+# dataset/labels/

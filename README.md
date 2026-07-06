@@ -58,7 +58,12 @@ Run the interactive web dashboard to upload and detect potholes on custom images
 ```bash
 streamlit run app/streamlit_app.py
 ```
-This will launch the app in your default browser at `http://localhost:8501/`.
+This will launch the app in your default browser at `http://localhost:8502/`.
+
+### Dashboard Previews
+| Pothole Detection with Water Reflection | Street Pothole Detection |
+|:---:|:---:|
+| ![Puddle Pothole](assets/detection_puddle.png) | ![Street Pothole](assets/detection_street.png) |
 
 ---
 

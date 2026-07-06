@@ -45,3 +45,4 @@ results/detections/
 *.png
 !models/yolov8/results/training_curves.png
 !models/yolov8/weights/best.pt
+!assets/*.png

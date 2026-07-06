@@ -1,21 +1,11 @@
-# Deep Learning & Neural Networks Backend
-torch
-torchvision
-
-# YOLO Object Detection framework (includes YOLOv8 and YOLOv11)
-ultralytics>=8.3.0
-
-# Computer Vision & Image Processing
+ultralytics>=8.0.0
+torch>=2.0.0
+torchvision>=0.15.0
 opencv-python>=4.8.0
-Pillow>=9.0.0
-
-# Data Manipulation & Numerical Computations
-numpy>=1.23.0
-pandas>=1.4.0
-
-# Data Visualization & Comparison Charts
-matplotlib>=3.5.0
-seaborn>=0.11.0
-
-# Web Application Framework for interactive demo
+matplotlib>=3.7.0
+pandas>=2.0.0
+numpy>=1.24.0
+tqdm>=4.65.0
+Pillow>=10.0.0
+pyyaml>=6.0
 streamlit>=1.22.0

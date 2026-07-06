@@ -1,139 +1,116 @@
-# Pothole Detection System: YOLOv11 vs. YOLOv8 Comparison
+# 🕳️ Pothole Detection using YOLOv8
 
-[![Python Version](https://img.shields.io/badge/python-3.8%20%7C%203.9%20%7C%203.10%20%7C%203.11%20%7C%203.12%20%7C%203.14-blue)](https://www.python.org/)
-[![Framework](https://img.shields.io/badge/framework-Ultralytics%20YOLO-orange)](https://github.com/ultralytics/ultralytics)
-[![Deep Learning Backend](https://img.shields.io/badge/backend-PyTorch-red)](https://pytorch.org/)
-[![Application](https://img.shields.io/badge/webapp-Streamlit-FF4B4B)](https://streamlit.io/)
-
-An automated road maintenance inspection system that compares the performance of **YOLOv11 (Original)** and **YOLOv8 (Baseline)** architectures in detecting potholes. Both models are trained and validated under strictly identical conditions to evaluate accuracy, latency, and hardware resource footprint.
+## Description
+AI-powered pothole detection system that identifies potholes in road images using YOLOv8 object detection. It is built as a complete, self-contained Python machine learning pipeline that includes environment validation, automatic synthetic dataset generation, model training, and multi-format inference.
 
 ---
 
-## 📂 Project Structure
+## Features
+- **Environment Setup Check**: Checks Python version, PyTorch installation, CUDA/GPU availability, and package imports.
+- **Synthetic Dataset Generation**: Creates a high-fidelity synthetic road dataset (300 images with lanes and rough-edged potholes) split into Train/Val/Test directories, along with auto-validation of YOLO labels.
+- **Model Training**: Loads YOLOv8 Nano (`yolov8n.pt`) and trains on CPU or GPU with full training duration tracking and loss curves.
+- **Multi-Format Detection System**: Supports detection on a single image, real-time video processing with FPS tracking, and batch directory processing. Includes automated generation of test media out-of-the-box.
 
-```text
-pothole_detection_project/
-│
-├── dataset/                      # YOLO formatted dataset folder
-│   ├── images/                   # Road images (train, val, test)
-│   ├── labels/                   # Normalized YOLO text annotations
-│   └── data.yaml                 # Paths and class configurations
-│
-├── models/                       # Model storage and checkpoints
-│   ├── yolov11/                  # YOLOv11 weights and epoch logs
-│   └── yolov8/                   # YOLOv8 weights and epoch logs
-│
-├── src/                          # Project source scripts
-│   ├── setup_environment.py      # Env setup and package verification
-│   ├── download_dataset.py       # YAML configuration and mock dataset generator
-│   ├── data_preprocessing.py     # Annotation quality and statistics inspector
-│   ├── train_yolov11.py          # YOLOv11 training pipeline
-│   ├── train_yolov8.py           # YOLOv8 training pipeline
-│   ├── inference.py              # PotholeDetector class wrapper
-│   ├── test_detection.py         # Side-by-side test visualization generator
-│   └── metrics_comparison.py     # Quantitative benchmarking analyzer
-│
-├── app/                          # Web application
-│   └── streamlit_app.py          # Streamlit comparative web dashboard
-│
-├── results/                      # Evaluation figures
-│   ├── comparison_charts/        # Accuracy, latency, and radar plots
-│   └── detection_examples/       # Stitched detection outputs
-│
-├── docs/                         # Reports and guides
-│   ├── project_report.md         # Detailed academic project report
-│   ├── presentation.md           # Slide outline and talking points
-│   └── interview_qa.md           # 20 viva defense questions & answers
-│
-├── requirements.txt              # Project package list
-├── .gitignore                    # Git tracking ignore file
-└── README.md                     # Project landing documentation (This file)
+---
+
+## Installation
+Ensure you have Python 3.8+ installed, then install all requirements:
+```bash
+pip install -r requirements.txt
 ```
 
 ---
 
-## ⚡ Quick Start Guide
-
-Follow these steps to set up and run the entire comparative benchmarking project on your machine:
-
-### 1. Installation
-Clone this repository to your local drive and install the dependencies:
+## Setup
+Initialize the directory structure and run system configuration checks:
 ```bash
-# Clone the repository
-git clone https://github.com/yourusername/pothole-detection-comparison.git
-cd pothole-detection-comparison
-
-# Run the environment setup script
-# This creates the directories, installs requirements, and checks CUDA status
-python src/setup_environment.py
+python src/setup.py
 ```
 
-### 2. Dataset Preparation
-Set up the directories and generate the synthetic dataset:
-```bash
-# Creates data.yaml and generates 145 road images with pothole labels
-python src/download_dataset.py
+---
 
-# Inspect and validate the annotation coordinates and split ratios
-python src/data_preprocessing.py
+## Prepare Dataset
+Clean directories, generate the synthetic dataset, split it (70% train, 20% val, 10% test), create the YAML file, and validate YOLO annotations:
+```bash
+python src/prepare_dataset.py
 ```
 
-### 3. Model Training
-Run training under identical hyperparameters for both architectures:
-```bash
-# Train YOLOv11 Nano (5 epochs for CPU test run, outputs ONNX)
-python src/train_yolov11.py --epochs 5 --batch 8
+---
 
-# Train YOLOv8 Nano under identical conditions
-python src/train_yolov8.py --epochs 5 --batch 8
+## Train Model
+Fine-tune the YOLOv8 model using transfer learning (configured for CPU-friendliness: 10 epochs at 320x320 resolution):
+```bash
+python src/train.py
 ```
 
-### 4. Run Inference & Comparisons
-Visualize and analyze the model predictions:
-```bash
-# Generate side-by-side qualitative detection images on test split
-python src/test_detection.py
+---
 
-# Run quantitative benchmarking suite (generates charts and HTML report)
-python src/metrics_comparison.py
+## Detect Potholes
+Run inference on a single image, a test folder, and a simulated video sequence:
+```bash
+python src/detect.py
 ```
 
-### 5. Launch the Web App
-Run the Streamlit interactive dashboard:
+---
+
+## Web Application (Dashboard)
+Run the interactive web dashboard to upload and detect potholes on custom images/videos:
 ```bash
 streamlit run app/streamlit_app.py
 ```
+This will launch the app in your default browser at `http://localhost:8501/`.
 
 ---
 
-## 📊 Results Summary
-
-The following benchmarks were obtained by running the validation suite on our hold-out split:
-
-| Benchmark Metric | YOLOv8 Nano (Base) | YOLOv11 Nano (Proposed) | YOLOv11 vs. YOLOv8 Comparison |
-| :--- | :---: | :---: | :---: |
-| **mAP@0.5** | **$0.9880$** | $0.9837$ | -$0.0043$ (identical) |
-| **mAP@0.5:0.95** | $0.6687$ | **$0.7002$** | **+$0.0315$** (**+4.7%** tighter boxes) |
-| **F1-Score** | $0.0289$ | **$0.6140$** | **+$0.5851$** (better classification) |
-| **Inference Latency (CPU)**| $131.19\text{ ms}$ | **$116.42\text{ ms}$** | **-$14.77\text{ ms}$** (**11% faster**) |
-| **Overall Frame Rate** | $7.32\text{ FPS}$ | **$7.92\text{ FPS}$** | **+$0.60\text{ FPS}$** (**8.2% faster**) |
-| **Model Weight File Size** | $5.96\text{ MB}$ | **$5.21\text{ MB}$** | **-$0.75\text{ MB}$** (**12.6% smaller**) |
-| **Parameter Count** | $3.01\text{ M}$ | **$2.58\text{ M}$** | **-$0.43\text{ M}$** (**14.3% fewer weights**) |
-| **Complexity (FLOPs)** | $8.1\text{ G}$ | **$6.3\text{ G}$** | **-$1.8\text{ G}$** (**22.2% fewer operations**) |
+## Project Structure
+```text
+pothole_detection/
+├── dataset/
+│   ├── images/
+│   │   ├── train/
+│   │   ├── val/
+│   │   └── test/
+│   └── labels/
+│       ├── train/
+│       ├── val/
+│       └── test/
+│   └── data.yaml
+├── models/
+│   └── yolov8/
+│       ├── weights/
+│       │   ├── best.pt
+│       │   └── last.pt
+│       └── results/
+│           └── training_curves.png
+├── src/
+│   ├── setup.py
+│   ├── prepare_dataset.py
+│   ├── train.py
+│   └── detect.py
+├── results/
+│   └── detections/
+│       ├── det_test_image.jpg
+│       ├── det_road_video.mp4
+│       └── det_road_0271.jpg (to det_road_0300.jpg)
+├── requirements.txt
+└── README.md
+```
 
 ---
 
-## 🤝 Contributing
+## Results
 
-Contributions to this comparative benchmarking study are welcome!
-1. Fork the repository.
-2. Create a new branch (`git checkout -b feature/AmazingFeature`).
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`).
-4. Push to the branch (`git push origin feature/AmazingFeature`).
-5. Open a Pull Request.
+### 📈 Training Results
+- **Training Duration**: 7 minutes 6 seconds (on CPU)
+- **Final Training Loss**: 1.7683
+- **Final Validation Loss**: 1.7369
+- **Best mAP@0.5**: 0.9948
+- **Saved Weights**: `models/yolov8/weights/best.pt`
+- **Saved Metrics Plot**: `models/yolov8/results/training_curves.png`
 
----
-
-## 📜 License
-
-Distributed under the MIT License. See `LICENSE` for more information.
+### 🔍 Detection Results (Test Set)
+- **Processed Images**: 30 images
+- **Total Potholes Found**: 100
+- **Average Potholes/Image**: 3.33
+- **Average Inference Latency**: 101.9 ms per image (CPU)
+- **Video Output**: 90 frames processed at 8.5 FPS, saved to `results/detections/det_road_video.mp4`

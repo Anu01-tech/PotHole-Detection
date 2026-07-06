@@ -1,5 +1,6 @@
 names:
-  0: pothole
+- pothole
+nc: 1
 path: C:/Users/anugr/Desktop/Python/Pothole Detection/dataset
 test: images/test
 train: images/train

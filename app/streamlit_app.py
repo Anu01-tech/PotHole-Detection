@@ -1,401 +1,263 @@
-"""
-streamlit_app.py
-
-This Streamlit web application provides an interactive user interface for the
-Pothole Detection System. Features include:
-1. File upload for images and videos (.jpg, .jpeg, .png, .mp4).
-2. Two operational modes: Single Model view vs. Side-by-Side Model comparison.
-3. Sliders for real-time adjustments of Confidence and IoU NMS thresholds.
-4. Live processing with visual feedback, inference latency logs, and FPS counters.
-5. Export capabilities to download annotated results.
-
-Usage:
-    # Run from the project root directory:
-    streamlit run app/streamlit_app.py
-"""
-
 import os
 import sys
-import cv2
+import time
 import tempfile
+import cv2
 import numpy as np
 from PIL import Image
 import streamlit as st
 
-# Add project root to python path to ensure imports work correctly
+# Add project root directory to sys.path to ensure src imports work properly
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 if project_root not in sys.path:
     sys.path.append(project_root)
 
-from src.inference import PotholeDetector
+# Import the PotholeDetector class from our core detect.py
+from src.detect import PotholeDetector
+
+# Fix Windows console unicode issues
+if sys.platform.startswith('win'):
+    try:
+        sys.stdout.reconfigure(encoding='utf-8')
+        sys.stderr.reconfigure(encoding='utf-8')
+    except AttributeError:
+        pass
 
 # --- Page Configurations & Styling ---
 st.set_page_config(
-    page_title="Pothole Detection Hub: YOLOv11 vs. YOLOv8",
+    page_title="Pothole Detection Hub - YOLOv8",
+    page_icon="🕳️",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS for premium styling
+# Custom premium CSS styling (dark mode themed headers with clean visual cards)
 st.markdown("""
     <style>
         .main-title {
             font-size: 2.8rem;
-            font-weight: 700;
-            background: linear-gradient(135deg, #1f385c 0%, #e67e22 100%);
+            font-weight: 800;
+            background: linear-gradient(135deg, #1e3d59 0%, #ff6e40 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             text-align: center;
-            margin-bottom: 5px;
+            margin-bottom: 2px;
         }
         .subtitle {
             font-size: 1.1rem;
             color: #7f8c8d;
             text-align: center;
-            margin-bottom: 30px;
+            margin-bottom: 25px;
+        }
+        .metric-container {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
         }
         .metric-card {
-            background-color: #ffffff;
-            border-radius: 8px;
-            padding: 15px;
+            flex: 1;
+            background-color: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
             box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-            border-left: 5px solid #1f385c;
+            border-left: 5px solid #ff6e40;
             text-align: center;
         }
-        .metric-card.v8 { border-left-color: #4A90E2; }
-        .metric-card.v11 { border-left-color: #E67E22; }
         .metric-val {
-            font-size: 1.6rem;
-            font-weight: bold;
-            color: #2c3e50;
+            font-size: 2.2rem;
+            font-weight: 800;
+            color: #1e3d59;
         }
         .metric-lbl {
-            font-size: 0.9rem;
+            font-size: 0.85rem;
             color: #7f8c8d;
             text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 600;
+        }
+        .stButton>button {
+            width: 100%;
+            background: linear-gradient(135deg, #1e3d59 0%, #17b978 100%);
+            color: white;
+            border: None;
+            padding: 10px 20px;
+            font-weight: bold;
+            border-radius: 5px;
+            transition: all 0.3s ease;
+        }
+        .stButton>button:hover {
+            opacity: 0.9;
+            transform: translateY(-2px);
         }
     </style>
 """, unsafe_allow_html=True)
 
-# --- Sidebar Inputs ---
-st.sidebar.image("https://img.icons8.com/color/96/road-worker.png", width=80)
-st.sidebar.title("Configuration Panel")
+# --- Sidebar Configuration ---
+st.sidebar.markdown("<div style='text-align: center;'><img src='https://img.icons8.com/color/96/road-worker.png' width='80'></div>", unsafe_allow_html=True)
+st.sidebar.markdown("<h2 style='text-align: center;'>YOLOv8 Config Panel</h2>", unsafe_allow_html=True)
+st.sidebar.markdown("---")
 
-# Mode Selection
-app_mode = st.sidebar.selectbox(
-    "Select App Mode",
-    ["Single Model Inference", "Side-by-Side Comparison"]
-)
+# Model Path Setup
+model_path = "models/yolov8/weights/best.pt"
+model_exists = os.path.exists(model_path)
 
-# Model paths
-yolov8_path = "models/yolov8/weights/best.pt"
-yolov11_path = "models/yolov11/weights/best.pt"
-
-# Validate model weight files
-models_exist = os.path.exists(yolov8_path) and os.path.exists(yolov11_path)
-
-if not models_exist:
-    st.sidebar.error("⚠️ Model weights not found! Please run the training scripts first.")
+if not model_exists:
+    st.sidebar.warning("⚠️ Trained weights 'best.pt' not found. App will fallback to pre-trained weights.")
     
-# Confidence and IoU NMS Threshold Sliders
-# Default to 0.05 since the models are trained for 5 validation epochs on CPU
+# Detection threshold sliders
 conf_threshold = st.sidebar.slider(
     "Confidence Threshold",
     min_value=0.01,
     max_value=1.00,
-    value=0.05,
+    value=0.30,
     step=0.01,
-    help="Minimum confidence score required to display a detection. Lower value for under-trained models."
+    help="Minimum score required to classify a bounding box as a pothole."
 )
 
-iou_threshold = st.sidebar.slider(
-    "NMS IoU Threshold",
-    min_value=0.10,
-    max_value=1.00,
-    value=0.45,
-    step=0.05,
-    help="Intersection over Union (IoU) overlap limit. Lower values suppress overlapping boxes more aggressively."
-)
 
-# Sidebar System Info
-st.sidebar.markdown("---")
-st.sidebar.subheader("System Info")
-st.sidebar.info(
-    "💡 **Quick Dry-Run Mode Active**\n\n"
-    "The models were trained for **5 epochs** on a synthetic dataset for CPU compatibility. "
-    "To visualize detections, keep the **Confidence Threshold** low (e.g., `0.01 - 0.08`)."
-)
+# --- Main Interface ---
+st.markdown("<div class='main-title'>Road Pothole Detection Hub</div>", unsafe_allow_html=True)
+st.markdown("<div class='subtitle'>AI-Powered Road Inspection & Verification Dashboard powered by YOLOv8</div>", unsafe_allow_html=True)
 
-# --- Main Board Header ---
-st.markdown("<div class='main-title'>Road Pothole Detection System</div>", unsafe_allow_html=True)
-st.markdown("<div class='subtitle'>Comparative Analysis Dashboard: YOLOv11 (Original) vs. YOLOv8 (Baseline)</div>", unsafe_allow_html=True)
+# Cache detector instantiation to prevent reloading model on every parameter change
+@st.cache_resource
+def get_detector(weights):
+    return PotholeDetector(weights)
 
-# File uploader
+detector = get_detector(model_path)
+
+# Upload Section
 uploaded_file = st.file_uploader(
-    "Upload a road image or video for pothole detection",
+    "Upload a road image or video to perform real-time pothole detection:",
     type=["jpg", "jpeg", "png", "mp4"]
 )
 
-# Helper function to cache model loading
-@st.cache_resource
-def load_detector(model_path):
-    return PotholeDetector(model_path)
+if uploaded_file is not None:
+    file_extension = uploaded_file.name.split('.')[-1].lower()
 
-# --- App Execution Flow ---
-if uploaded_file is not None and models_exist:
-    file_type = uploaded_file.name.split('.')[-1].lower()
-    
-    # Initialize detectors
-    detector_v8 = load_detector(yolov8_path)
-    detector_v11 = load_detector(yolov11_path)
-    
-    # ------------------ IMAGE PROCESSING ------------------
-    if file_type in ['jpg', 'jpeg', 'png']:
-        # Load uploaded image bytes
+    # --- IMAGE PIPELINE ---
+    if file_extension in ["jpg", "jpeg", "png"]:
+        # Decode uploaded image
         image_bytes = np.frombuffer(uploaded_file.read(), np.uint8)
         img_bgr = cv2.imdecode(image_bytes, cv2.IMREAD_COLOR)
         
-        # Single Model Inference Mode
-        if app_mode == "Single Model Inference":
-            selected_model_name = st.selectbox("Choose Model", ["YOLOv11 Nano", "YOLOv8 Nano"])
-            
-            detector = detector_v11 if selected_model_name == "YOLOv11 Nano" else detector_v8
-            
-            st.write("Running detection...")
-            
-            # Predict
-            t0 = time.time()
-            annotated_bgr, detections = detector.predict_image(
-                img_bgr, 
-                conf_threshold=conf_threshold, 
-                iou_threshold=iou_threshold
-            )
-            latency = (time.time() - t0) * 1000 # ms
-            fps = 1000.0 / latency if latency > 0 else 0
-            
-            # Layout
-            col1, col2 = st.columns([2, 1])
-            
-            with col1:
-                # Convert BGR to RGB for Streamlit display
-                annotated_rgb = cv2.cvtColor(annotated_bgr, cv2.COLOR_BGR2RGB)
-                st.image(annotated_rgb, caption=f"Processed image ({selected_model_name})", use_column_width=True)
-                
-            with col2:
-                st.subheader("Performance Metrics")
-                
-                # Metric Cards
-                st.markdown(f"""
-                    <div class='metric-card {"v11" if "11" in selected_model_name else "v8"}'>
-                        <div class='metric-val'>{len(detections)}</div>
-                        <div class='metric-lbl'>Potholes Detected</div>
-                    </div>
-                    <br>
-                    <div class='metric-card {"v11" if "11" in selected_model_name else "v8"}'>
-                        <div class='metric-val'>{latency:.1f} ms</div>
-                        <div class='metric-lbl'>Inference Latency</div>
-                    </div>
-                    <br>
-                    <div class='metric-card {"v11" if "11" in selected_model_name else "v8"}'>
-                        <div class='metric-val'>{fps:.1f} FPS</div>
-                        <div class='metric-lbl'>Equivalent Speed</div>
-                    </div>
-                """, unsafe_allow_html=True)
-                
-                # Raw detections json
-                st.markdown("---")
-                st.subheader("Raw JSON Output")
-                st.json(detections)
-                
-                # Download Button
-                is_success, buffer = cv2.imencode(".jpg", annotated_bgr)
-                if is_success:
-                    st.download_button(
-                        label=f"📥 Download Annotated Image",
-                        data=buffer.tobytes(),
-                        file_name=f"potholes_{selected_model_name.replace(' ', '_').lower()}_{uploaded_file.name}",
-                        mime="image/jpeg"
-                    )
-                    
-        # Side-by-Side Comparison Mode
-        else:
-            st.write("Running dual model detection comparison...")
-            
-            # Predict YOLOv8
-            t0 = time.time()
-            annotated_bgr_v8, detections_v8 = detector_v8.predict_image(
-                img_bgr, 
-                conf_threshold=conf_threshold, 
-                iou_threshold=iou_threshold
-            )
-            latency_v8 = (time.time() - t0) * 1000
-            
-            # Predict YOLOv11
-            t1 = time.time()
-            annotated_bgr_v11, detections_v11 = detector_v11.predict_image(
-                img_bgr, 
-                conf_threshold=conf_threshold, 
-                iou_threshold=iou_threshold
-            )
-            latency_v11 = (time.time() - t1) * 1000
-            
-            # Layout: columns
-            col_v8, col_v11 = st.columns(2)
-            
-            with col_v8:
-                st.subheader("YOLOv8 Nano")
-                rgb_v8 = cv2.cvtColor(annotated_bgr_v8, cv2.COLOR_BGR2RGB)
-                st.image(rgb_v8, use_column_width=True)
-                
-                st.markdown(f"""
-                    <div class='metric-card v8'>
-                        <div class='metric-val'>{len(detections_v8)} potholes</div>
-                        <div class='metric-lbl'>Latency: {latency_v8:.1f} ms | FPS: {1000.0/latency_v8:.1f}</div>
-                    </div>
-                """, unsafe_allow_html=True)
-                
-            with col_v11:
-                st.subheader("YOLOv11 Nano (Winner)")
-                rgb_v11 = cv2.cvtColor(annotated_bgr_v11, cv2.COLOR_BGR2RGB)
-                st.image(rgb_v11, use_column_width=True)
-                
-                st.markdown(f"""
-                    <div class='metric-card v11'>
-                        <div class='metric-val'>{len(detections_v11)} potholes</div>
-                        <div class='metric-lbl'>Latency: {latency_v11:.1f} ms | FPS: {1000.0/latency_v11:.1f}</div>
-                    </div>
-                """, unsafe_allow_html=True)
-                
-            # Stitched comparison download
-            st.markdown("---")
-            h, w, c = img_bgr.shape
-            canvas = np.zeros((h, w * 2 + 10, 3), dtype=np.uint8)
-            canvas[:, :w] = annotated_bgr_v8
-            canvas[:, w + 10:] = annotated_bgr_v11
-            
-            is_success, buffer = cv2.imencode(".jpg", canvas)
-            if is_success:
-                st.download_button(
-                    label="📥 Download Side-by-Side Comparison Plot",
-                    data=buffer.tobytes(),
-                    file_name=f"yolov8_vs_yolov11_{uploaded_file.name}",
-                    mime="image/jpeg"
-                )
-                
-    # ------------------ VIDEO PROCESSING ------------------
-    elif file_type == 'mp4':
-        st.info("🎥 Video Processing Active. Uploaded file registered.")
+        # Run detection using our core class method
+        annotated_bgr, count, latency = detector.detect_image(
+            img_bgr, 
+            conf_threshold=conf_threshold, 
+            save=False
+        )
         
-        # Save uploaded file to temp path
-        tfile = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4")
+        # Layout columns
+        col1, col2 = st.columns([3, 1])
+        
+        with col1:
+            # Convert BGR to RGB for Streamlit display
+            img_rgb = cv2.cvtColor(annotated_bgr, cv2.COLOR_BGR2RGB)
+            st.image(img_rgb, caption="Annotated Detection Output", use_column_width=True)
+            
+        with col2:
+            st.markdown("### Performance & Metrics")
+            
+            # Display stats in custom CSS cards
+            st.markdown(f"""
+                <div class='metric-card'>
+                    <div class='metric-val'>{count}</div>
+                    <div class='metric-lbl'>Potholes Detected</div>
+                </div>
+            """, unsafe_allow_html=True)
+            
+            st.markdown("---")
+            
+            # Allow user to download the processed image
+            _, encoded_img = cv2.imencode('.jpg', annotated_bgr)
+            st.download_button(
+                label="📥 Download Annotated Image",
+                data=encoded_img.tobytes(),
+                file_name=f"det_{uploaded_file.name}",
+                mime="image/jpeg"
+            )
+
+    # --- VIDEO PIPELINE ---
+    elif file_extension == "mp4":
+        st.markdown("### Video Inference Preview")
+        
+        # Create a temporary file to save the uploaded video bytes
+        tfile = tempfile.NamedTemporaryFile(delete=False, suffix='.mp4')
         tfile.write(uploaded_file.read())
         tfile.close()
         
-        # Output temp path
-        out_temp = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4")
-        out_temp.close()
+        cap = cv2.VideoCapture(tfile.name)
+        total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
         
-        if app_mode == "Single Model Inference":
-            selected_model_name = st.selectbox("Choose Model", ["YOLOv11 Nano", "YOLOv8 Nano"])
-            detector = detector_v11 if selected_model_name == "YOLOv11 Nano" else detector_v8
+        # Create layout columns
+        col1, col2 = st.columns([3, 1])
+        
+        with col1:
+            frame_placeholder = st.empty()
             
-            if st.button("🚀 Process and Render Video"):
-                with st.spinner("Processing video frame-by-frame on CPU... please wait."):
-                    progress_bar = st.progress(0.0)
-                    
-                    # Open video stream
-                    cap = cv2.VideoCapture(tfile.name)
-                    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-                    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-                    fps = cap.get(cv2.CAP_PROP_FPS)
-                    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-                    
-                    # VideoWriter
-                    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-                    out = cv2.VideoWriter(out_temp.name, fourcc, fps, (width, height))
-                    
-                    frame_idx = 0
-                    total_time = 0
-                    
-                    # Metric holders
-                    potholes_per_frame = []
-                    
-                    while cap.isOpened():
-                        ret, frame = cap.read()
-                        if not ret:
-                            break
-                            
-                        frame_idx += 1
-                        t_start = time.time()
-                        
-                        # Inference
-                        annotated_frame, detections = detector.predict_image(
-                            frame, 
-                            conf_threshold=conf_threshold, 
-                            iou_threshold=iou_threshold
-                        )
-                        elapsed = time.time() - t_start
-                        total_time += elapsed
-                        potholes_per_frame.append(len(detections))
-                        
-                        # Draw overlay
-                        cv2.putText(
-                            annotated_frame,
-                            f"{selected_model_name} | Potholes: {len(detections)} | FPS: {1.0/elapsed:.1f}",
-                            (20, 40), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 140, 255), 2, cv2.LINE_AA
-                        )
-                        
-                        out.write(annotated_frame)
-                        
-                        # Update progress bar
-                        progress_bar.progress(frame_idx / total_frames)
-                        
-                    cap.release()
-                    out.release()
-                    
-                    avg_fps = frame_idx / total_time if total_time > 0 else 0
-                    avg_potholes = np.mean(potholes_per_frame) if potholes_per_frame else 0
-                    
-                    st.success("Video processing complete!")
-                    
-                    col1, col2 = st.columns(2)
-                    with col1:
-                        st.markdown(f"""
-                            <div class='metric-card'>
-                                <div class='metric-val'>{avg_potholes:.1f}</div>
-                                <div class='metric-lbl'>Avg Potholes Detected</div>
-                            </div>
-                        """, unsafe_allow_html=True)
-                    with col2:
-                        st.markdown(f"""
-                            <div class='metric-card'>
-                                <div class='metric-val'>{avg_fps:.1f} FPS</div>
-                                <div class='metric-lbl'>Average Process Speed</div>
-                            </div>
-                        """, unsafe_allow_html=True)
-                        
-                    # Download video
-                    with open(out_temp.name, "rb") as f:
-                        st.download_button(
-                            label="📥 Download Annotated Video",
-                            data=f.read(),
-                            file_name=f"potholes_{selected_model_name.replace(' ', '_').lower()}_{uploaded_file.name}",
-                            mime="video/mp4"
-                        )
-        else:
-            st.warning("⚠️ Side-by-Side video stitching is not supported directly in the browser due to CPU encoding times. "
-                       "Please use 'Single Model Inference' mode for video analysis.")
+        with col2:
+            st.markdown("### Real-Time Analytics")
+            pothole_card = st.empty()
+            progress_bar = st.progress(0.0)
             
-        # Clean up temp files
+        frame_idx = 0
+        
+        # Loop over frames and display in real time
+        while cap.isOpened():
+            ret, frame = cap.read()
+            if not ret:
+                break
+                
+            start_time = time.time()
+            
+            # Perform detection
+            results = detector.model(frame, conf=conf_threshold, imgsz=320, verbose=False)
+            
+            latency = time.time() - start_time
+            fps = 1.0 / latency if latency > 0 else 30.0
+            
+            pothole_count = 0
+            for r in results:
+                boxes = r.boxes
+                pothole_count += len(boxes)
+                
+                for box in boxes:
+                    x1, y1, x2, y2 = box.xyxy[0].cpu().numpy().astype(int)
+                    conf = float(box.conf[0])
+                    
+                    # Draw green box
+                    cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
+                    # Draw label
+                    label = f"Pothole: {conf:.2f}"
+                    (w, h), _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.4, 1)
+                    cv2.rectangle(frame, (x1, y1 - h - 5), (x1 + w, y1), (0, 255, 0), -1)
+                    cv2.putText(frame, label, (x1, y1 - 3), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 0, 0), 1, cv2.LINE_AA)
+
+            # Draw visual metrics on the frame (only Potholes Count panel)
+            cv2.rectangle(frame, (10, 10), (220, 50), (0, 0, 0), -1)
+            cv2.putText(frame, f"Potholes: {pothole_count}", (20, 35), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2, cv2.LINE_AA)
+            
+            # Update streamlit view (Convert BGR to RGB)
+            frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            frame_placeholder.image(frame_rgb, use_column_width=True)
+            
+            # Update metrics cards
+            pothole_card.markdown(f"""
+                <div class='metric-card'>
+                    <div class='metric-val'>{pothole_count}</div>
+                    <div class='metric-lbl'>Current Potholes</div>
+                </div>
+            """, unsafe_allow_html=True)
+            
+            # Update progress
+            frame_idx += 1
+            progress_bar.progress(min(frame_idx / total_frames, 1.0))
+            
+        cap.release()
         os.unlink(tfile.name)
-        
+        st.success("🎉 Video processing complete!")
+
 else:
-    # --- Landing Page Info ---
-    st.info("ℹ️ Upload an image or video above to begin pothole detection predictions.")
-    
-    # Display some project metrics details
-    st.markdown("### Model Architectural Spec Sheet")
-    st.table([
-        {"Model": "YOLOv8 Nano (Base)", "Parameters": "3.01 Million", "FLOPs": "8.1 GFLOPs", "Size": "5.96 MB", "Backbone": "C2f"},
-        {"Model": "YOLOv11 Nano (New)", "Parameters": "2.58 Million", "FLOPs": "6.3 GFLOPs", "Size": "5.21 MB", "Backbone": "C3k2 (Winner)"}
-    ])
+    # App landing message when no file is uploaded
+    st.info("👋 Welcome! Please upload a road image (.jpg, .png) or video (.mp4) from the file uploader above to begin detection.")

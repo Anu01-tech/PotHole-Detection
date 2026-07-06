@@ -34,7 +34,14 @@ Thumbs.db
 kaggle.json
 .streamlit/config.toml
 
-# Large datasets and model weights (optional to ignore, but we keep our small checkpoints in git)
-# If you download large external datasets, uncomment the line below:
-# dataset/images/
-# dataset/labels/
+# Large datasets and model weights (exclude from git)
+dataset/images/
+dataset/labels/
+dataset/*.zip
+runs/
+results/detections/
+*.mp4
+*.jpg
+*.png
+!models/yolov8/results/training_curves.png
+!models/yolov8/weights/best.pt

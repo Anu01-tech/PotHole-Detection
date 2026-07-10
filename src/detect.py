@@ -6,6 +6,15 @@ import numpy as np
 from tqdm import tqdm
 from ultralytics import YOLO
 
+# Add the current directory (src) to sys.path to resolve imports when running from other roots (like Streamlit)
+src_dir = os.path.dirname(os.path.abspath(__file__))
+if src_dir not in sys.path:
+    sys.path.append(src_dir)
+
+# Import advanced area calculation and severity classification features
+from feature_area_calculation import PotholeAreaCalculator
+from feature_severity import PotholeSeverityClassifier
+
 # Fix Windows console unicode issues
 if sys.platform.startswith('win'):
     try:
@@ -32,6 +41,14 @@ class PotholeDetector:
         # Ensure output directory exists
         self.output_dir = "results/detections"
         os.makedirs(self.output_dir, exist_ok=True)
+
+        # Initialize advanced analysis tools
+        self.area_calculator = PotholeAreaCalculator(model_path)
+        self.severity_classifier = PotholeSeverityClassifier(model_path)
+        
+        # Configure manual calibration on both classes (camera height = 100cm, FOV = 60 degrees)
+        self.area_calculator.set_manual_calibration(100, 60, 640)
+        self.severity_classifier.pixels_per_cm = self.area_calculator.pixels_per_cm
 
     def detect_image(self, image_path, conf_threshold=0.5, save=True):
         """
@@ -99,6 +116,22 @@ class PotholeDetector:
             cv2.imwrite(output_path, img)
             
         return img, pothole_count, inference_time_ms
+
+    def advanced_detect(self, image_path, conf_threshold=0.5):
+        """
+        Runs advanced analysis on an image, including area calculation,
+        shadow-based depth estimation, risk scoring, and severity classification.
+        """
+        # 1. Run detection + area measurement
+        area_image, area_results = self.area_calculator.detect_with_area(image_path, conf_threshold=conf_threshold)
+        
+        # 2. Run detection + severity & risk classification
+        severity_image, severity_results = self.severity_classifier.analyze_image(image_path, conf_threshold=conf_threshold)
+        
+        # 3. Generate a structured JSON report
+        self.severity_classifier.generate_report(severity_results)
+        
+        return area_image, area_results, severity_image, severity_results
 
     def detect_video(self, video_path, conf_threshold=0.5, save=True):
         """
@@ -321,14 +354,25 @@ def main():
     detector = PotholeDetector()
     print("-" * 50)
 
-    # 3. Detect on single image
-    print("🖼️  Running detection on 'test_image.jpg'...")
+    # 3. Detect on single image (standard mode)
+    print("🖼️  Running detection on 'test_image.jpg' (Standard)...")
     _, count, inference_time = detector.detect_image("test_image.jpg", conf_threshold=0.4, save=True)
     print(f"   Done! Found {count} potholes in {inference_time:.1f} ms.")
     print(f"   Output saved to: results/detections/det_test_image.jpg")
     print("-" * 50)
 
-    # 4. Batch process test split folder
+    # 4. Run Advanced Detection (Area and Severity) on single image
+    print("🧠 Running advanced detection (Area + Severity) on 'test_image.jpg'...")
+    area_img, area_results, severity_img, severity_results = detector.advanced_detect("test_image.jpg", conf_threshold=0.4)
+    cv2.imwrite("results/detections/area_analysis.jpg", area_img)
+    cv2.imwrite("results/detections/severity_analysis.jpg", severity_img)
+    print(f"   Done! Outputs saved to:")
+    print(f"   - results/detections/area_analysis.jpg")
+    print(f"   - results/detections/severity_analysis.jpg")
+    print(f"   - results/detections/severity_report.json")
+    print("-" * 50)
+
+    # 5. Batch process test split folder
     test_folder = "dataset/images/test"
     if os.path.exists(test_folder):
         detector.batch_detect(test_folder, conf_threshold=0.4)
@@ -336,7 +380,7 @@ def main():
         print(f"⚠️  Test folder not found at '{test_folder}'. Make sure to run prepare_dataset.py.")
     print("-" * 50)
 
-    # 5. Detect on video
+    # 6. Detect on video
     print("🎥 Running detection on 'road_video.mp4'...")
     detector.detect_video("road_video.mp4", conf_threshold=0.4, save=True)
     print("-" * 50)

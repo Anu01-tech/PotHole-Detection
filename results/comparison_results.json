@@ -1,0 +1,90 @@
+{
+  "metrics_comparison": {
+    "mAP50": {
+      "yolov8": 0.4627,
+      "yolov11": 0.0047,
+      "pct_difference": -98.98,
+      "winner": "YOLOv8"
+    },
+    "mAP95": {
+      "yolov8": 0.1904,
+      "yolov11": 0.0015,
+      "pct_difference": -99.21,
+      "winner": "YOLOv8"
+    },
+    "precision": {
+      "yolov8": 0.012,
+      "yolov11": 0.0074,
+      "pct_difference": -38.33,
+      "winner": "YOLOv8"
+    },
+    "recall": {
+      "yolov8": 1.0,
+      "yolov11": 0.6204,
+      "pct_difference": -37.96,
+      "winner": "YOLOv8"
+    },
+    "f1_score": {
+      "yolov8": 0.0237,
+      "yolov11": 0.0147,
+      "pct_difference": -37.97,
+      "winner": "YOLOv8"
+    },
+    "inference_time_ms": {
+      "yolov8": 188.62,
+      "yolov11": 174.99,
+      "pct_difference": -7.23,
+      "winner": "YOLOv11"
+    },
+    "fps": {
+      "yolov8": 4.9,
+      "yolov11": 5.2,
+      "pct_difference": 6.12,
+      "winner": "YOLOv11"
+    },
+    "model_size_mb": {
+      "yolov8": 5.96,
+      "yolov11": 5.21,
+      "pct_difference": -12.58,
+      "winner": "YOLOv11"
+    },
+    "training_time_mins": {
+      "yolov8": 0.17,
+      "yolov11": 0.17,
+      "pct_difference": 0.0,
+      "winner": "Tie"
+    }
+  },
+  "raw_metrics": {
+    "yolov8": {
+      "mAP50": 0.4627,
+      "mAP95": 0.1904,
+      "precision": 0.012,
+      "recall": 1.0,
+      "f1_score": 0.0237,
+      "inference_time_ms": 188.62,
+      "fps": 4.9,
+      "load_time_ms": 204.6,
+      "training_time_mins": 0.17,
+      "model_size_mb": 5.96,
+      "num_params": 3011043,
+      "cpu_mem_mb": 1267.83,
+      "gpu_mem_mb": 0.0
+    },
+    "yolov11": {
+      "mAP50": 0.0047,
+      "mAP95": 0.0015,
+      "precision": 0.0074,
+      "recall": 0.6204,
+      "f1_score": 0.0147,
+      "inference_time_ms": 174.99,
+      "fps": 5.2,
+      "load_time_ms": 253.8,
+      "training_time_mins": 0.17,
+      "model_size_mb": 5.21,
+      "num_params": 2590035,
+      "cpu_mem_mb": 1873.32,
+      "gpu_mem_mb": 0.0
+    }
+  }
+}

@@ -114,6 +114,13 @@ conf_threshold = st.sidebar.slider(
     help="Minimum score required to classify a bounding box as a pothole."
 )
 
+analysis_mode = st.sidebar.selectbox(
+    "Analysis Mode",
+    options=["Standard Detection", "Area Calculation", "Severity Classification"],
+    help="Select standard detection or advanced area/severity analysis features."
+)
+
+
 
 # --- Main Interface ---
 st.markdown("<div class='main-title'>Road Pothole Detection Hub</div>", unsafe_allow_html=True)
@@ -141,12 +148,29 @@ if uploaded_file is not None:
         image_bytes = np.frombuffer(uploaded_file.read(), np.uint8)
         img_bgr = cv2.imdecode(image_bytes, cv2.IMREAD_COLOR)
         
-        # Run detection using our core class method
-        annotated_bgr, count, latency = detector.detect_image(
-            img_bgr, 
-            conf_threshold=conf_threshold, 
-            save=False
-        )
+        # Run detection based on the selected mode
+        analysis_summary = None
+        if analysis_mode == "Standard Detection":
+            annotated_bgr, count, latency = detector.detect_image(
+                img_bgr, 
+                conf_threshold=conf_threshold, 
+                save=False
+            )
+        elif analysis_mode == "Area Calculation":
+            # Manual calibration (100cm height, 60 degrees FOV)
+            detector.area_calculator.set_manual_calibration(100, 60, 640)
+            annotated_bgr, potholes_data = detector.area_calculator.detect_with_area(
+                img_bgr, 
+                conf_threshold=conf_threshold
+            )
+            count = len(potholes_data)
+        else: # Severity Classification
+            detector.severity_classifier.pixels_per_cm = detector.area_calculator.pixels_per_cm
+            annotated_bgr, analysis_summary = detector.severity_classifier.analyze_image(
+                img_bgr, 
+                conf_threshold=conf_threshold
+            )
+            count = len(analysis_summary["potholes"])
         
         # Layout columns
         col1, col2 = st.columns([3, 1])
@@ -167,6 +191,13 @@ if uploaded_file is not None:
                 </div>
             """, unsafe_allow_html=True)
             
+            # If Severity Classification is chosen, generate the JSON report and display it
+            if analysis_mode == "Severity Classification" and analysis_summary is not None:
+                report = detector.severity_classifier.generate_report(analysis_summary)
+                st.markdown("---")
+                st.markdown("### Severity Report")
+                st.json(report)
+                
             st.markdown("---")
             
             # Allow user to download the processed image

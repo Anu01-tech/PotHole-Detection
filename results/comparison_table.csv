@@ -1,0 +1,10 @@
+Metric,YOLOv8,YOLOv11,Winner
+mAP@0.5,0.463,0.005,YOLOv8
+mAP@0.5:0.95,0.190,0.002,YOLOv8
+Precision,1.2%,0.7%,YOLOv8
+Recall,100.0%,62.0%,YOLOv8
+F1-Score,0.024,0.015,YOLOv8
+Inference Time,188.6 ms,175.0 ms,YOLOv11
+FPS,4.9,5.2,YOLOv11
+Model Size,6.0 MB,5.2 MB,YOLOv11
+Training Time,0.2 mins,0.2 mins,Tie
